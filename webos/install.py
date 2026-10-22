@@ -13,7 +13,6 @@ not stored). The unlocked key is kept in ~/.ssh/freemytv_webos_<IP>, so updates 
 SSH (port 9922) and installed with the TV's own installer (com.webos.appInstallService), the way LG's tools do it.
 Install flow based on FreeMyTvWebOS by danielthejoker18 (MIT). Needs Python 3 and OpenSSH (ssh, ssh-keygen).
 """
-import getpass
 import json
 import os
 import re
@@ -28,12 +27,17 @@ IPK = os.path.join(ROOT, 'FreeMyTV-webos.ipk')
 with open(os.path.join(ROOT, 'webos', 'appinfo.json'), encoding='utf-8') as f:
     APP_ID = json.load(f)['id']
 TEMP = '/media/developer/temp/freemytv.ipk'
-SSH_OPTS = ['-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=' + os.devnull, '-o', 'LogLevel=ERROR',
-            '-o', 'HostKeyAlgorithms=+ssh-rsa', '-o', 'PubkeyAcceptedKeyTypes=+ssh-rsa', '-p', '9922']
 
 
 def key_path(ip):
     return os.path.join(os.path.expanduser('~'), '.ssh', 'freemytv_webos_' + ip.replace('.', '_'))
+
+
+def ssh_opts(ip):
+    # The TV's host key is trusted the first time and checked after that, so another machine can't pose as the TV.
+    return ['-o', 'StrictHostKeyChecking=accept-new', '-o', 'UserKnownHostsFile=' + key_path(ip) + '.known_hosts',
+            '-o', 'LogLevel=ERROR', '-o', 'HostKeyAlgorithms=+ssh-rsa', '-o', 'PubkeyAcceptedKeyTypes=+ssh-rsa',
+            '-p', '9922']
 
 
 def fetch_key(ip):
@@ -48,13 +52,14 @@ def fetch_key(ip):
             data = r.read()
     except Exception as e:
         sys.exit('Couldn\'t reach the Key Server (%s). In the TV\'s Developer Mode app, turn on Key Server.' % e)
-    passphrase = getpass.getpass('Passphrase shown in Developer Mode on the TV: ').strip()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = tempfile.NamedTemporaryFile(delete=False)
     tmp.write(data)
     tmp.close()
     os.chmod(tmp.name, 0o600)
-    unlock = subprocess.run(['ssh-keygen', '-p', '-P', passphrase, '-N', '', '-f', tmp.name], capture_output=True, text=True)
+    # ssh-keygen asks for the passphrase itself, so it never shows up in the list of running processes.
+    print('Type the passphrase shown in Developer Mode on the TV.')
+    unlock = subprocess.run(['ssh-keygen', '-p', '-N', '', '-f', tmp.name], capture_output=True, text=True)
     if unlock.returncode != 0:
         os.unlink(tmp.name)
         sys.exit('That passphrase didn\'t unlock the key. Check it on the TV (Developer Mode) and try again.')
@@ -64,7 +69,7 @@ def fetch_key(ip):
 
 
 def ssh(ip, key, command, stdin=None, tty=False):
-    args = ['ssh'] + (['-tt'] if tty else []) + SSH_OPTS + ['-i', key, 'prisoner@' + ip, command]
+    args = ['ssh'] + (['-tt'] if tty else []) + ssh_opts(ip) + ['-i', key, 'prisoner@' + ip, command]
     return subprocess.run(args, stdin=stdin, capture_output=True, text=stdin is None)
 
 
@@ -101,7 +106,8 @@ def main():
         copy = ssh(ip, key, 'mkdir -p /media/developer/temp && cat > ' + TEMP, stdin=f)
     if copy.returncode != 0:
         err = copy.stderr.decode('utf-8', 'replace') if isinstance(copy.stderr, bytes) else copy.stderr
-        sys.exit('Couldn\'t copy it: %s\nIs Developer Mode still on? If the key changed, delete %s and try again.' % (err.strip(), key))
+        sys.exit('Couldn\'t copy it: %s\nIs Developer Mode still on? If Developer Mode was set up again, delete %s and '
+                 '%s.known_hosts and try again.' % (err.strip(), key, key))
     print('Installing ...')
     out = luna(ip, key, 'luna://com.webos.appInstallService/dev/install', {'id': APP_ID, 'ipkUrl': TEMP, 'subscribe': True},
                replies=30, wait=60)

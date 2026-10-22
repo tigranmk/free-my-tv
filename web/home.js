@@ -241,7 +241,7 @@
       card.style.left = rects[c][0] + 'px';
       card.style.width = rects[c][1] + 'px';
       var img = el('div', 'img', card);
-      img.style.backgroundImage = 'url(' + Data.image(p.backdrop, c === 0 ? 'w1280' : 'w780') + ')';
+      img.style.backgroundImage = 'url("' + Data.image(p.backdrop, c === 0 ? 'w1280' : 'w780') + '")';
       el('div', 'name', card, p.title);
       if (c === 0 && p.meta) el('div', 'meta', card, p.meta);
       hover(card, Z.CARDS, c);
@@ -769,7 +769,7 @@
       var p = photos.length ? photos[saverIndex++ % photos.length] : null;
       var back = front === a ? b : a;
       if (p) {
-        back.style.backgroundImage = 'url(' + Data.image(p.backdrop, 'original') + ')';
+        back.style.backgroundImage = 'url("' + Data.image(p.backdrop, 'original') + '")';
         back.style.webkitTransform = back.style.transform = 'scale(1.0)';
         clock.lastChild.textContent = p.title;
         setTimeout(function () {

@@ -119,7 +119,7 @@ The first values come from `config.properties`, created by the first build (Goog
 | `disable_assistant` | Also turn off Google Assistant | `false` |
 | `hide_services` | Streaming services to leave out of the picks even when their app is on the TV (`netflix`, `prime`, `disney`…), comma separated; for apps the TV ships that you don't subscribe to. Google TV only | empty |
 
-Changed something? Run `./build.sh` and install again. Keep `freemytv.keystore`: updates are signed with it.
+Changed something? Run `./build.sh` and install again. Keep `freemytv.keystore` and `freemytv.keystore.pass`: updates are signed with them.
 
 ### The TMDB key
 

@@ -517,7 +517,10 @@ var Data = (function () {
     recsError: function () { return recsError; },
     picks: now,
     showcase: all,
-    image: function (path, size) { return path ? 'https://image.tmdb.org/t/p/' + (size || 'w1280') + path : ''; },
+    // Only plain TMDB file names ("/abc123.jpg"): the path ends up inside a CSS url().
+    image: function (path, size) {
+      return /^\/[\w-]+\.(jpg|png)$/.test(path || '') ? 'https://image.tmdb.org/t/p/' + (size || 'w1280') + path : '';
+    },
 
     /** Night at the location: from sunset to sunrise (the last forecast; without one, 6:00 and 18:00). */
     isNight: function (at) {
