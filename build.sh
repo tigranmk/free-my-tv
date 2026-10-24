@@ -122,10 +122,13 @@ if command -v zip >/dev/null; then (cd out && zip -qj base.apk classes.dex)
 else "${JAVA_HOME:+$JAVA_HOME/bin/}jar" -u -M -f out/base.apk -C out classes.dex; fi # Git Bash has no zip
 "$BT/zipalign" -f -p 4 out/base.apk out/aligned.apk
 
-# --- Sign with your own key (created once; updates need the same key, so keep freemytv.keystore)
+# --- Sign with your own key (created once; updates need the same key, so keep freemytv.keystore and its .pass file)
+# New keystores get a random password in freemytv.keystore.pass; older ones keep the password they were made with.
 if [ ! -f freemytv.keystore ]; then
+  (umask 077; head -c 18 /dev/urandom | base64 > freemytv.keystore.pass)
   "$KEYTOOL" -genkeypair -keystore freemytv.keystore -alias freemytv -keyalg RSA -keysize 2048 -validity 20000 \
-    -storepass freemytv -keypass freemytv -dname "CN=Free My TV" >/dev/null 2>&1
+    -storepass:file freemytv.keystore.pass -keypass:file freemytv.keystore.pass -dname "CN=Free My TV" >/dev/null 2>&1
 fi
-"$BT/apksigner$BAT" sign --ks freemytv.keystore --ks-pass pass:freemytv --key-pass pass:freemytv --out FreeMyTV.apk out/aligned.apk
+if [ -f freemytv.keystore.pass ]; then KS_PASS=file:freemytv.keystore.pass; else KS_PASS=pass:freemytv; fi
+"$BT/apksigner$BAT" sign --ks freemytv.keystore --ks-pass "$KS_PASS" --key-pass "$KS_PASS" --out FreeMyTV.apk out/aligned.apk
 echo "Built FreeMyTV.apk ($(du -h FreeMyTV.apk | cut -f1)). Install: adb install -r FreeMyTV.apk"
